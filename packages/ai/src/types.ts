@@ -41,6 +41,22 @@ export type Api = KnownApi | (string & {});
 export type KnownProvider = "anthropic" | "openai" | "google" | "amazon-bedrock" | "groq"; // ...真实文件约有 35 个
 export type ProviderId = KnownProvider | string;
 
+export interface OpenAICompletionsCompat {
+    /** Whether the provider supports the `store` field. Default: auto-detected from URL. */
+    supportsStore?: boolean;
+    /** Whether the provider supports the `developer` role (vs `system`). Default: auto-detected from URL. */
+    supportsDeveloperRole?: boolean;
+    /** Which field to use for max tokens. Default: auto-detected from URL. */
+    maxTokensField?: "max_completion_tokens" | "max_tokens";
+    /** Whether tool results require the `name` field. Default: auto-detected from URL. */
+    requiresToolResultName?: boolean;
+    /** Whether thinking blocks must be converted to text blocks with <thinking> delimiters. */
+    requiresThinkingAsText?: boolean;
+    /** Format for reasoning/thinking parameter. */
+    thinkingFormat?: "openai" | "openrouter" | "deepseek" | "together" | "zai" | "qwen" | /* ... */ "ant-ling";
+    // ...
+}
+
 export interface Model<TApi extends Api> {
     id: string;
     name: string;
@@ -53,7 +69,14 @@ export interface Model<TApi extends Api> {
     contextWindow: number;
     maxTokens: number;
     headers?: Record<string, string>;
-    // compat?: ... — 各 API 的兼容性覆盖，见教程 03
+    /** Compatibility overrides for OpenAI-compatible APIs. If not set, auto-detected from baseUrl. */
+    compat?: TApi extends "openai-completions"
+        ? OpenAICompletionsCompat
+        : TApi extends "openai-responses" | "openai-codex-responses"
+            ? OpenAIResponsesCompat
+            : TApi extends "anthropic-messages"
+                ? AnthropicMessagesCompat
+                : never;
 }
 
 export interface Usage {
