@@ -1,3 +1,7 @@
+# Node
+node_modules/
+packages/*/dist/
+
 # Compiled class file
 *.class
 
