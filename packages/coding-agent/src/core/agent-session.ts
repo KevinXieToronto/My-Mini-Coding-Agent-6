@@ -57,6 +57,9 @@ export class AgentSession {
 	private harness: AgentHarness;
 	private subscribers: AgentSessionSubscriber[] = [];
 	private unsubscribeFromHarness: () => void;
+	private running = false;
+	private queue: AgentMessage[] = [];
+	private queueSettlers = new Map<AgentMessage, { resolve: () => void; reject: (error: unknown) => void }>();
 
 	constructor(options: {
 		services: AgentSessionServices;
@@ -106,8 +109,39 @@ export class AgentSession {
 
 	// ---- Prompting ----
 
+	/** True while the agent loop is processing a prompt (or the queue behind it). */
+	get isRunning(): boolean {
+		return this.running;
+	}
+
+	/** Prompts submitted while a run is active, in submission order. */
+	get queuedPrompts(): readonly AgentMessage[] {
+		return this.queue;
+	}
+
+	/**
+	 * Run one prompt through the agent loop. A prompt submitted while a run is
+	 * active is queued and processed after the current loop finishes; the
+	 * returned promise resolves once that queued prompt has completed.
+	 */
 	prompt(input: string | AgentMessage): Promise<void> {
-		return this.harness.prompt(input);
+		const message: AgentMessage =
+			typeof input === "string" ? { role: "user", content: input, timestamp: Date.now() } : input;
+		if (this.running) {
+			return new Promise((resolve, reject) => {
+				this.queue.push(message);
+				this.queueSettlers.set(message, { resolve, reject });
+			});
+		}
+		return this.runLoop(message);
+	}
+
+	/** Drop prompts that have not started yet; their promises resolve without running. */
+	clearQueue(): void {
+		for (const message of this.queue.splice(0)) {
+			this.queueSettlers.get(message)?.resolve();
+			this.queueSettlers.delete(message);
+		}
 	}
 
 	abort(): void {
@@ -133,7 +167,10 @@ export class AgentSession {
 	async compact(signal?: AbortSignal): Promise<boolean> {
 		const contextEntries = this.session.getPathEntries();
 		const plan = planCompaction(contextEntries, DEFAULT_COMPACTION_SETTINGS);
-		if (plan.summarizedEntryIds.length === 0) return false;
+		// A cut that contains no messages (e.g. only the session-info entry) is not worth a model call.
+		const summarized = new Set(plan.summarizedEntryIds);
+		const cutsMessages = contextEntries.some((entry) => summarized.has(entry.id) && entry.type === "message");
+		if (!cutsMessages) return false;
 		const fields = await summarizeForCompaction(
 			contextEntries,
 			plan,
@@ -179,6 +216,35 @@ export class AgentSession {
 	}
 
 	// ---- Internals ----
+
+	/** Run the first prompt, then drain whatever queued up behind it. */
+	private async runLoop(first: AgentMessage): Promise<void> {
+		this.running = true;
+		try {
+			await this.harness.prompt(first);
+			while (this.queue.length > 0) {
+				const message = this.queue.shift()!;
+				const settler = this.queueSettlers.get(message);
+				this.queueSettlers.delete(message);
+				try {
+					await this.harness.prompt(message);
+					settler?.resolve();
+				} catch (error) {
+					settler?.reject(error);
+					throw error;
+				}
+			}
+		} catch (error) {
+			// A failed run must not leave later queued prompts hanging forever.
+			for (const message of this.queue.splice(0)) {
+				this.queueSettlers.get(message)?.reject(error);
+				this.queueSettlers.delete(message);
+			}
+			throw error;
+		} finally {
+			this.running = false;
+		}
+	}
 
 	private switchTo(session: Session): void {
 		this.unsubscribeFromHarness();
