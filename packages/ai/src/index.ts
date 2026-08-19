@@ -1,3 +1,5 @@
+export type { Static, TSchema } from "typebox";
+export { Type } from "typebox";
 export { createSetupErrorMessage, forwardStream, lazyApi, lazyStream } from "./api/lazy.ts";
 export { envApiKeyAuth, lazyOAuth } from "./auth/helpers.ts";
 export * from "./auth/types.ts";

@@ -1,5 +1,15 @@
 import { createProvider, type Provider } from "./models.ts";
-import type { Api, AssistantMessage, Model, ProviderStreams, TextContent, Usage } from "./types.ts";
+import type {
+	Api,
+	AssistantMessage,
+	Model,
+	ProviderStreams,
+	StopReason,
+	TextContent,
+	ThinkingContent,
+	ToolCall,
+	Usage,
+} from "./types.ts";
 import { AssistantMessageEventStream } from "./utils/event-stream.ts";
 
 function fauxUsage(outputTokens: number): Usage {
@@ -13,16 +23,31 @@ function fauxUsage(outputTokens: number): Usage {
 	};
 }
 
-/** A canned assistant response for tests; output tokens are a rough estimate from text length. */
-export function fauxAssistantMessage(text: string): AssistantMessage {
+let fauxToolCallCounter = 0;
+
+/** A canned tool call for tests. */
+export function fauxToolCall(name: string, args: Record<string, any>): ToolCall {
+	fauxToolCallCounter++;
+	return { type: "toolCall", id: `faux-toolcall-${fauxToolCallCounter}`, name, arguments: args };
+}
+
+/** A canned assistant response for tests; output tokens are a rough estimate from content length. */
+export function fauxAssistantMessage(
+	content: string | ToolCall | (TextContent | ThinkingContent | ToolCall)[],
+	options?: { stopReason?: StopReason },
+): AssistantMessage {
+	const blocks: (TextContent | ThinkingContent | ToolCall)[] =
+		typeof content === "string" ? [{ type: "text", text: content }] : Array.isArray(content) ? content : [content];
+	const textLength = blocks.reduce((n, block) => n + (block.type === "text" ? block.text.length : 24), 0);
+	const stopReason = options?.stopReason ?? (blocks.some((block) => block.type === "toolCall") ? "toolUse" : "stop");
 	return {
 		role: "assistant",
-		content: [{ type: "text", text }],
+		content: blocks,
 		api: "faux",
 		provider: "faux",
 		model: "faux-1",
-		usage: fauxUsage(Math.max(1, Math.ceil(text.length / 4))),
-		stopReason: "stop",
+		usage: fauxUsage(Math.max(1, Math.ceil(textLength / 4))),
+		stopReason,
 		timestamp: Date.now(),
 	};
 }
@@ -78,6 +103,11 @@ export function fauxProvider(): FauxProvider {
 						stream.push({ type: "text_delta", contentIndex, delta, partial });
 					}
 					stream.push({ type: "text_end", contentIndex, content: block.text, partial });
+				} else if (block.type === "toolCall") {
+					partial.content.push(block);
+					stream.push({ type: "toolcall_start", contentIndex, partial });
+					stream.push({ type: "toolcall_delta", contentIndex, delta: JSON.stringify(block.arguments), partial });
+					stream.push({ type: "toolcall_end", contentIndex, toolCall: block, partial });
 				} else {
 					partial.content.push(block);
 				}
