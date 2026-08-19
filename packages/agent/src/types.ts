@@ -15,9 +15,7 @@ import type { Static, TSchema } from "typebox";
 export type ToolExecutionMode = "sequential" | "parallel";
 
 /** Static<any> is unknown in typebox; map it back to any so `AgentTool<any>` stays ergonomic. */
-export type ToolParams<TParameters extends TSchema> = unknown extends Static<TParameters>
-	? any
-	: Static<TParameters>;
+export type ToolParams<TParameters extends TSchema> = unknown extends Static<TParameters> ? any : Static<TParameters>;
 
 /** Streams partial results while a tool executes. */
 export type AgentToolUpdateCallback<TDetails = any> = (partialResult: AgentToolResult<TDetails>) => void;
