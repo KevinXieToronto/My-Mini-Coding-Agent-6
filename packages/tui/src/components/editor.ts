@@ -19,6 +19,7 @@ export class Editor implements EditorComponent {
 	private historyIndex = -1;
 	/** Text being edited before the user started browsing history. */
 	private pendingText?: string;
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: stored via setAutocompleteProvider; consumed once autocomplete rendering lands
 	private autocompleteProvider?: AutocompleteProvider;
 	private readonly keybindings: KeybindingsManager;
 

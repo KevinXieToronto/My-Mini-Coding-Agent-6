@@ -8,7 +8,9 @@
     "scripts": {
         "clean": "npm run clean --workspaces",
         "build": "cd packages/tui && npm run build && cd ../ai && npm run build && cd ../agent && npm run build && cd ../coding-agent && npm run build",
-        "check": "biome check --write --error-on-warnings . && tsgo --noEmit",
+        "check": "biome check --write --error-on-warnings . && npm run check:pinned-deps && npm run check:ts-imports && tsgo --noEmit",
+        "check:pinned-deps": "node scripts/check-pinned-deps.mjs",
+        "check:ts-imports": "node scripts/check-ts-relative-imports.mjs",
         "test": "npm test --workspaces --if-present"
     },
     "devDependencies": {

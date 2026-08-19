@@ -125,7 +125,9 @@ describe("Editor", () => {
 	test("inserts text and submits on enter", () => {
 		const editor = new Editor();
 		let submitted = "";
-		editor.onSubmit = (text) => (submitted = text);
+		editor.onSubmit = (text) => {
+			submitted = text;
+		};
 		editor.handleInput("hello");
 		editor.handleInput("\r");
 		assert.equal(submitted, "hello");
