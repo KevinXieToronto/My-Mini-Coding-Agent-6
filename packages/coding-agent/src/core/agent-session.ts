@@ -184,7 +184,10 @@ export class AgentSession {
 
 	// ---- Bash execution ----
 
-	executeBash(command: string, options?: { timeoutMs?: number; signal?: AbortSignal }): Promise<Result<ExecResult, string>> {
+	executeBash(
+		command: string,
+		options?: { timeoutMs?: number; signal?: AbortSignal },
+	): Promise<Result<ExecResult, string>> {
 		return this.env.exec(command, { cwd: this.services.cwd, ...options });
 	}
 

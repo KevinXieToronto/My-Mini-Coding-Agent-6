@@ -1,4 +1,4 @@
-import { type Api, type Model, MODELS } from "@earendil-works/pi-ai";
+import type { Api, MODELS, Model } from "@earendil-works/pi-ai";
 import type { AgentSessionRuntimeDiagnostic, AgentSessionServices } from "./agent-session-services.ts";
 import { parseModelSpec } from "./model-registry.ts";
 

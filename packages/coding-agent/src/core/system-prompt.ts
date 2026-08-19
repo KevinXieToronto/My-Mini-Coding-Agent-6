@@ -29,7 +29,8 @@ export function buildSystemPrompt(inputs: SystemPromptInputs): string {
 		`Today's date: ${(inputs.today ?? new Date()).toISOString().slice(0, 10)}`,
 	];
 	if (inputs.modelName) envLines.push(`Model: ${inputs.modelName}`);
-	if (inputs.toolNames && inputs.toolNames.length > 0) envLines.push(`Available tools: ${inputs.toolNames.join(", ")}`);
+	if (inputs.toolNames && inputs.toolNames.length > 0)
+		envLines.push(`Available tools: ${inputs.toolNames.join(", ")}`);
 
 	const sections = [base, `# Environment\n${envLines.join("\n")}`];
 	if (inputs.appendSystemMd) sections.push(inputs.appendSystemMd);

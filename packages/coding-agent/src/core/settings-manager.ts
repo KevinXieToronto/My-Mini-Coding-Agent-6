@@ -31,8 +31,7 @@ export class SettingsManager {
 	constructor(options: SettingsManagerOptions) {
 		this.globalPath = options.globalPath;
 		this.global = this.loadFile(options.globalPath);
-		this.project =
-			options.projectPath && options.projectTrusted === true ? this.loadFile(options.projectPath) : {};
+		this.project = options.projectPath && options.projectTrusted === true ? this.loadFile(options.projectPath) : {};
 	}
 
 	/** Merged view; project wins over global. */
